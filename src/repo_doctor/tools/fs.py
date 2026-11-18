@@ -18,6 +18,7 @@ class CloneRepoTool(Tool):
 
     def run(self, repo_url: str,  ref: str = "") -> ToolResult:
         name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+        Path(self.workspace).mkdir(parents=True, exist_ok=True)
         path = Path(self.workspace) / name
 
         # 只有存在且是有效 git 仓库，才算缓存命中

@@ -2,8 +2,8 @@
 
 Tracing is opt-in: install the extra (``pip install -e ".[tracing]"``) and set
 ``LANGFUSE_PUBLIC_KEY`` / ``LANGFUSE_SECRET_KEY``. When the package is missing
-the module still imports and every call is a no-op, so the agent never depends
-on tracing being available.
+or the keys are not configured the module still imports and every call is a
+no-op, so the agent never depends on tracing being available.
 """
 
 try:
@@ -11,7 +11,15 @@ try:
 except ImportError:  # pragma: no cover - tracing is an optional extra
     Langfuse = None
 
-lf = Langfuse() if Langfuse is not None else None
+from .config import settings
+
+if Langfuse is not None and settings.langfuse_public_key and settings.langfuse_secret_key:
+    lf = Langfuse(
+        public_key=settings.langfuse_public_key,
+        secret_key=settings.langfuse_secret_key,
+    )
+else:
+    lf = None
 
 
 def trace_step(i, step):

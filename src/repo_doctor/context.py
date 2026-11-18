@@ -1,7 +1,9 @@
 import json
+from pathlib import Path
+
 from .state import TaskState
 
-SYSTEM = open("src/repo_doctor/prompts/system.md", encoding="utf-8").read()
+SYSTEM = (Path(__file__).parent / "prompts" / "system.md").read_text(encoding="utf-8")
 
 
 def build_messages(state: TaskState) -> list[dict]:

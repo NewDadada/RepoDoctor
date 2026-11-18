@@ -5,6 +5,7 @@ for its schema, while read_file / search_code run against tmp_path trees.
 """
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -81,3 +82,18 @@ def test_clone_args_require_repo_url():
 
     args = CloneArgs(repo_url="https://github.com/psf/requests.git", ref="main")
     assert args.repo_url.endswith(".git")
+
+
+def test_clone_repo_creates_missing_workspace_parent(monkeypatch, tmp_path):
+    workspace = tmp_path / "fresh" / "workspace"
+    tools = build_tools(str(workspace))
+
+    def fake_run(cmd, **kwargs):
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr("repo_doctor.tools.fs.subprocess.run", fake_run)
+
+    result = tools["clone_repo"].run("https://github.com/psf/requests")
+
+    assert result.ok
+    assert workspace.is_dir()

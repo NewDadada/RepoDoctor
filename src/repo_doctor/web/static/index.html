@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Repo Doctor · 仓库体检</title>
+  <meta name="description" content="Repo Doctor 本地 Web UI：让 Agent 自动克隆、检索并诊断一个 GitHub 仓库。">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7"/><path d="M18 11.5c0 3.5-4 3.4-8.4 4.8"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m5 7 5 5-5 5"/><path d="M12 17h7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="m18.5 14.5.8 2.5 2.2.8-2.2.8-.8 2.4-.8-2.4-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.7"/><path d="M20 4v7h-7"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="m14 6 6 6-6 6"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="Repo Doctor 首页">
+        <span class="brand-mark"><svg class="icon"><use href="#i-pulse"></use></svg></span>
+        <span class="brand-text"><strong>Repo Doctor</strong><small>仓库体检助手</small></span>
+        <span class="version" id="versionChip">v1.0.0</span>
+      </a>
+      <div class="top-actions">
+        <span class="local-pill"><span class="pulse-dot"></span>本地运行</span>
+        <button type="button" id="themeBtn" class="icon-btn" aria-label="切换深色模式" title="切换主题">
+          <svg class="icon icon-sun"><use href="#i-sun"></use></svg>
+          <svg class="icon icon-moon"><use href="#i-moon"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="panel form-panel" aria-labelledby="form-title">
+      <div class="panel-head">
+        <p class="eyebrow"><span class="eyebrow-dot"></span>New diagnosis</p>
+        <h1 id="form-title">给仓库做一次<br><span>快速体检</span></h1>
+        <p class="lede">Agent 会克隆仓库、检索并阅读代码，最后给出一条带引用的具体问题。</p>
+      </div>
+
+      <div id="keyWarn" class="callout warn" hidden>
+        <svg class="icon"><use href="#i-alert"></use></svg>
+        <div>
+          <strong>尚未配置 API Key</strong>
+          <p>在项目根目录的 <code>.env</code> 中填写 <code>DeepSeek_API_TRAE_study_KEY</code>，保存后重启本地服务。</p>
+        </div>
+      </div>
+
+      <form id="runForm" novalidate>
+        <div class="field">
+          <label class="field-label" for="repo">仓库地址 <span class="optional">GitHub</span></label>
+          <div class="input-shell">
+            <svg class="icon"><use href="#i-git"></use></svg>
+            <input id="repo" name="repo" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="owner/repo 或 https://github.com/owner/repo" required>
+          </div>
+          <div class="samples" id="samples" aria-label="示例仓库"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="goal">体检目标</label>
+          <div class="textarea-shell">
+            <textarea id="goal" name="goal" rows="3" maxlength="4000"
+                      placeholder="例如：找出一个具体的 bug，引用相关代码并给出修复建议。" required></textarea>
+          </div>
+          <p class="field-hint">想查什么就写什么，比如某个报错、接口或 TODO。</p>
+        </div>
+
+        <details class="advanced">
+          <summary><svg class="icon chev"><use href="#i-chevron"></use></svg>高级选项</summary>
+          <div class="advanced-grid">
+            <div class="field compact">
+              <label class="field-label" for="ref">分支 / 标签</label>
+              <div class="input-shell"><input id="ref" name="ref" type="text" placeholder="默认分支" spellcheck="false"></div>
+            </div>
+            <div class="field compact">
+              <label class="field-label" for="maxSteps">最大步数</label>
+              <div class="input-shell"><input id="maxSteps" name="maxSteps" type="number" min="1" max="30" value="15"></div>
+            </div>
+          </div>
+        </details>
+
+        <button id="runBtn" class="btn-primary" type="submit">
+          <svg class="icon lead"><use href="#i-pulse"></use></svg>
+          <span>开始体检</span>
+          <svg class="icon arrow"><use href="#i-arrow-right"></use></svg>
+        </button>
+        <p class="form-note"><kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd> 快速开始 · 结果只留在本机</p>
+      </form>
+    </section>
+
+    <section class="results" aria-labelledby="report-title">
+      <div class="results-head">
+        <div>
+          <p class="eyebrow"><span class="eyebrow-dot"></span>Diagnosis report</p>
+          <h2 id="report-title">诊断报告</h2>
+        </div>
+        <div class="report-meta">
+          <span id="modelChip" class="meta-chip">deepseek-chat</span>
+          <span id="workspaceChip" class="meta-chip ghost">./workspace</span>
+        </div>
+      </div>
+
+      <div id="emptyState" class="empty">
+        <div class="empty-art">
+          <svg class="icon"><use href="#i-pulse"></use></svg>
+        </div>
+        <h3>还没有体检记录</h3>
+        <p>填入仓库地址，Agent 会一步步展示它看到的内容。</p>
+        <div class="flow" aria-hidden="true">
+          <span>克隆</span><i></i><span>检索</span><i></i><span>阅读</span><i></i><span>诊断</span>
+        </div>
+      </div>
+
+      <div id="runView" hidden>
+        <div id="statusbar" class="statusbar" role="status" aria-live="polite">
+          <div class="status-main">
+            <span id="statusIcon" class="status-icon"><span class="spinner"></span></span>
+            <div class="status-copy">
+              <strong id="statusTitle">正在体检</strong>
+              <span id="statusSub" class="status-sub">准备中…</span>
+            </div>
+          </div>
+          <div class="status-stats">
+            <span class="stat"><svg class="icon"><use href="#i-spark"></use></svg><span id="stepCount">0</span> 步</span>
+            <span class="stat"><svg class="icon"><use href="#i-clock"></use></svg><span id="elapsed">00:00</span></span>
+            <button id="stopBtn" class="btn-stop" type="button">
+              <svg class="icon"><use href="#i-stop"></use></svg><span>停止</span>
+            </button>
+          </div>
+          <span class="scanline" aria-hidden="true"></span>
+        </div>
+
+        <div id="finalCard" class="final" hidden></div>
+        <ol id="timeline" class="timeline" aria-label="Agent 执行步骤"></ol>
+
+        <div id="thinking" class="thinking" hidden>
+          <span class="spinner small"></span>
+          <span class="thinking-text">第 <b id="thinkingStep">1</b> 步 · 模型正在规划下一步</span>
+          <span class="shimmer" aria-hidden="true"></span>
+        </div>
+
+        <div id="errorCard" class="error-card" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-foot">
+    <span>Repo Doctor <span id="footVersion">v1.0.0</span> · MIT</span>
+    <span class="foot-dot"></span>
+    <span>所有运行数据只留在本机</span>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript><div class="noscript">这个界面需要启用 JavaScript。</div></noscript>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

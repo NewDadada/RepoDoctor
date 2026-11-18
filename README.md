@@ -35,16 +35,22 @@ clone_repo → search_code / read_file → ... → final_answer
 │   ├── state.py                # TaskState / Step 数据类
 │   ├── trace.py                # 可选的 Langfuse 上报
 │   ├── prompts/system.md       # 系统提示词
-│   └── tools/                  # clone_repo / read_file / search_code
+│   ├── tools/                  # clone_repo / read_file / search_code
+│   └── web/                    # 本地 Web UI
+│       ├── server.py           # http.server + SSE（零额外依赖）
+│       └── static/             # 单页界面（HTML / CSS / JS）
 ├── scripts/
 │   ├── run.py                  # 单次演示
+│   ├── serve.py                # 启动本地 Web UI
 │   └── eval.py                 # 评测入口
 ├── tests/
 │   ├── eval_cases/             # 评测用例（JSON）
 │   ├── test_config.py          # 配置加载（离线）
 │   ├── test_tools.py           # 工具层（离线）
 │   ├── test_trace.py           # 追踪缺失时的降级
+│   ├── test_web.py             # Web API / SSE / 静态资源（离线）
 │   └── test_version.py         # 版本 / 许可证元数据
+├── docs/                       # Web UI 预览图
 ├── .github/workflows/ci.yml    # CI：Python 3.10 ~ 3.13
 ├── LICENSE                     # MIT
 └── eval_results/               # 评测结果（本地生成，不入库）
@@ -86,16 +92,52 @@ pip install -e ".[tracing]"
 | `WORKSPACE_DIR` | 克隆仓库的落地目录，默认 `./workspace` |
 | `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | 可选，开启链路追踪（需 `pip install -e ".[tracing]"`，Python ≥ 3.11） |
 
-> `context.py` 以相对路径读取 `src/repo_doctor/prompts/system.md`，
-> 因此请在项目根目录下运行脚本。
+> 建议在项目根目录下启动脚本：`.env` 与相对路径的 `WORKSPACE_DIR` 都以当前工作目录为基准。
 
 ## 使用
 
-单次演示：
+### 本地 Web UI（推荐）
+
+```bash
+python scripts/serve.py
+```
+
+默认会自动打开 <http://127.0.0.1:8765>（无法打开时手动访问即可）。界面里填入仓库
+（支持 `psf/requests` 这样的简写或完整 URL），Agent 会实时展示克隆、搜索、读取文件的
+每一步，并在结束时给出带代码引用的诊断结论。
+
+<img src="docs/ui-preview.png" alt="Repo Doctor Web UI" width="860">
+
+<details>
+<summary>深色模式预览</summary>
+
+<img src="docs/ui-dark.png" alt="Repo Doctor Web UI 深色模式" width="860">
+
+</details>
+
+```bash
+python scripts/serve.py --port 9000     # 换一个端口
+python scripts/serve.py --no-browser    # 不自动打开浏览器
+python scripts/serve.py --host 0.0.0.0  # 允许局域网访问（默认仅本机）
+```
+
+UI 是零额外依赖的单页应用，支持流式进度、中途停止、深色模式、复制报告和展开代码详情。
+API Key 仍然从 `.env` 读取；未配置时页面顶部会给出提示。
+
+也可以安装后直接运行：
+
+```bash
+pip install -e .
+repo-doctor-ui
+```
+
+### 单次演示
 
 ```bash
 python scripts/run.py
 ```
+
+### 评测
 
 评测全部用例：
 

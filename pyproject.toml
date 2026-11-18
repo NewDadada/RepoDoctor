@@ -35,6 +35,9 @@ dev = [
     "tomli>=2.0; python_version < '3.11'",
 ]
 
+[project.scripts]
+repo-doctor-ui = "repo_doctor.web.server:main"
+
 [project.urls]
 Homepage = "https://github.com/NewDadada/RepoDoctor"
 Repository = "https://github.com/NewDadada/RepoDoctor.git"
@@ -43,7 +46,7 @@ Repository = "https://github.com/NewDadada/RepoDoctor.git"
 where = ["src"]
 
 [tool.setuptools.package-data]
-repo_doctor = ["prompts/*.md"]
+repo_doctor = ["prompts/*.md", "web/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

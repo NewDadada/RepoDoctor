@@ -9,6 +9,7 @@ class Step:
     args: dict | None
     result: Any = None
     error: str | None = None
+    duration_ms: int = 0
 
 
 @dataclass
@@ -20,6 +21,7 @@ class TaskState:
     facts: list[str] = field(default_factory=list)
     scratchpad: str = ""
     done: bool = False
+    cancelled: bool = False
     final_answer: str | None = None
 
     def add_fact(self, f: str):
