@@ -1,5 +1,7 @@
 # Repo Doctor
 
+[![CI](https://github.com/NewDadada/RepoDoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/NewDadada/RepoDoctor/actions/workflows/ci.yml)
+
 用大模型自动"体检"仓库的轻量 Agent：给定一个 GitHub 仓库，它会克隆代码、检索与阅读文件，
 最终定位一个具体问题（bug / TODO / 过期接口），并给出带代码引用的结论。
 
@@ -37,7 +39,13 @@ clone_repo → search_code / read_file → ... → final_answer
 ├── scripts/
 │   ├── run.py                  # 单次演示
 │   └── eval.py                 # 评测入口
-├── tests/eval_cases/           # 评测用例（JSON）
+├── tests/
+│   ├── eval_cases/             # 评测用例（JSON）
+│   ├── test_config.py          # 配置加载（离线）
+│   ├── test_tools.py           # 工具层（离线）
+│   └── test_version.py         # 版本 / 许可证元数据
+├── .github/workflows/ci.yml    # CI：Python 3.10 ~ 3.13
+├── LICENSE                     # MIT
 └── eval_results/               # 评测结果（本地生成，不入库）
 ```
 
@@ -105,8 +113,23 @@ python scripts/eval.py --verbose
 | `read_file` | 按行切片读取文件（单次最多 500 行） |
 | `search_code` | 正则搜索，返回 `file:line`，最多 50 条命中 |
 
+## 测试
+
+```bash
+pip install -e ".[dev]"
+python -m pytest
+```
+
+测试全部离线运行，不需要 API Key：`test_tools.py` 在临时目录上验证 `read_file` / `search_code`，
+`test_version.py` 校验包版本、`pyproject.toml` 与 LICENSE 是否一致。
+GitHub Actions 在每次 push / PR 时用 Python 3.10 ~ 3.13 各跑一遍（见 `.github/workflows/ci.yml`）。
+
 ## 版本
 
 当前发布版本为 **1.0.0**，对应 git tag `v1.0.0`。
 版本号在两处维护：`pyproject.toml` 的 `[project].version` 与
 `src/repo_doctor/__init__.py` 的 `__version__`。
+
+## 许可证
+
+本项目基于 [MIT License](LICENSE) 发布，版权所有 (c) 2026 NewDadada。
