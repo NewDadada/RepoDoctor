@@ -25,10 +25,11 @@ dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
     "python-dotenv>=1.0",
-    "langfuse>=5.0",
 ]
 
 [project.optional-dependencies]
+# langfuse 5.x requires Python >= 3.11, so tracing stays optional.
+tracing = ["langfuse>=5.0"]
 dev = [
     "pytest>=8.0",
     "tomli>=2.0; python_version < '3.11'",

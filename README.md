@@ -43,6 +43,7 @@ clone_repo → search_code / read_file → ... → final_answer
 │   ├── eval_cases/             # 评测用例（JSON）
 │   ├── test_config.py          # 配置加载（离线）
 │   ├── test_tools.py           # 工具层（离线）
+│   ├── test_trace.py           # 追踪缺失时的降级
 │   └── test_version.py         # 版本 / 许可证元数据
 ├── .github/workflows/ci.yml    # CI：Python 3.10 ~ 3.13
 ├── LICENSE                     # MIT
@@ -66,6 +67,12 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+可选：启用 Langfuse 链路追踪（`langfuse` 5.x 需要 Python ≥ 3.11，因此作为独立 extra）：
+
+```bash
+pip install -e ".[tracing]"
+```
+
 ## 配置
 
 复制 `.env.example` 为 `.env`，填入密钥：
@@ -77,7 +84,7 @@ pip install -e .
 | `MODEL` | 模型名，默认 `deepseek-chat` |
 | `MAX_STEPS` | 单次任务最大步数，默认 15 |
 | `WORKSPACE_DIR` | 克隆仓库的落地目录，默认 `./workspace` |
-| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | 可选，开启链路追踪 |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | 可选，开启链路追踪（需 `pip install -e ".[tracing]"`，Python ≥ 3.11） |
 
 > `context.py` 以相对路径读取 `src/repo_doctor/prompts/system.md`，
 > 因此请在项目根目录下运行脚本。
