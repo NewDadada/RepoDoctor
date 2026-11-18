@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repo-doctor"
-version = "1.0.0"
+version = "1.1.0"
 description = "An LLM-powered agent that clones a repository, explores it with tools, and reports concrete issues."
 readme = "README.md"
 license = "MIT"

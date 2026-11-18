@@ -9,7 +9,7 @@ and produce a clear answer that quotes the relevant code.
 - Do NOT prepend `src/` or the repo name twice.
 
 ## Rules
-- Explore before answering. Use search_code and read_file (sliced).
+- Explore before answering: `list_files` for the layout, then `search_code` / `read_file` (sliced).
 - Before each tool call, state your reasoning in one short sentence.
 - If search_code returns 0 hits, read a known file directly instead of re-searching.
 - Never call clone_repo twice.

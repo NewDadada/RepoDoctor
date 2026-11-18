@@ -6,6 +6,7 @@
 
   const TOOL_META = {
     clone_repo: { label: "克隆仓库", icon: "i-git" },
+    list_files: { label: "浏览目录", icon: "i-folder" },
     search_code: { label: "搜索代码", icon: "i-search" },
     read_file: { label: "读取文件", icon: "i-file" },
     default: { label: "工具调用", icon: "i-terminal" },
@@ -748,6 +749,10 @@
         text: data.cached ? `缓存命中 · ${path}` : `已克隆 · ${path}`,
       };
     }
+    if (step.tool === "list_files") {
+      const count = Number(data.count) || 0;
+      return { icon: "i-folder", text: count ? `列出 ${count} 个条目` : "目录为空" };
+    }
     if (step.tool === "search_code") {
       const count = Number(data.count) || 0;
       if (!count) return { icon: "i-search", text: "没有命中，模型会换一种方式" };
@@ -791,6 +796,23 @@
         return;
       }
       body.append(codeView(step.data.path, step.data.start, content, step.data.total_lines, step.data.truncated));
+      return;
+    }
+
+    if (step.tool === "list_files") {
+      const data = step.data || {};
+      const entries = Array.isArray(data.entries) ? data.entries : [];
+      if (!entries.length) {
+        body.append(muted("目录为空。"));
+        return;
+      }
+      const pre = document.createElement("pre");
+      pre.className = "json-view";
+      pre.textContent = entries.join("\n");
+      body.append(pre);
+      if (data.truncated) {
+        body.append(muted(`条目过多，仅显示前 ${entries.length} 项。`));
+      }
       return;
     }
 

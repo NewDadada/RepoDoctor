@@ -181,6 +181,14 @@ def serialize_step(number: int, step: Any) -> dict:
             "path": _display_path(data.get("path")),
             "cached": bool(data.get("cached")),
         }
+    elif tool == "list_files" and ok:
+        entries = data.get("entries") if isinstance(data.get("entries"), list) else []
+        payload["data"] = {
+            "path": _display_path(data.get("path")),
+            "count": data.get("count", len(entries)),
+            "entries": [_clip(entry, 300) for entry in entries[:200] if isinstance(entry, str)],
+            "truncated": bool(data.get("truncated")) or len(entries) > 200,
+        }
     else:
         payload["data"] = _short_obj(data, 800)
 
@@ -240,7 +248,7 @@ class EventStream:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "RepoDoctorUI/1.0"
+    server_version = "RepoDoctorUI/1.1"
     protocol_version = "HTTP/1.1"
 
     # -- logging ---------------------------------------------------------
@@ -257,13 +265,17 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- responses -------------------------------------------------------
 
-    def _send_json(self, status: int, payload: Any) -> None:
+    def _send_json(self, status: int, payload: Any, close: bool = False) -> None:
         body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if close:
+            # An unread request body would otherwise reset the connection.
+            self.send_header("Connection", "close")
+            self.close_connection = True
         self.end_headers()
         try:
             self.wfile.write(body)
@@ -359,8 +371,22 @@ class Handler(BaseHTTPRequestHandler):
             same_origin = False
         if same_origin:
             return False
-        self._send_json(403, {"error": "拒绝跨站请求"})
+        self._discard_body()
+        self._send_json(403, {"error": "拒绝跨站请求"}, close=True)
         return True
+
+    def _discard_body(self) -> None:
+        """Consume an unread request body so the socket can close cleanly."""
+        try:
+            remaining = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            remaining = 0
+        remaining = min(max(remaining, 0), MAX_BODY_BYTES)
+        while remaining > 0:
+            chunk = self.rfile.read(min(remaining, 65536))
+            if not chunk:
+                break
+            remaining -= len(chunk)
 
     def _read_json(self) -> dict | None:
         content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()

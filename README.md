@@ -5,7 +5,7 @@
 用大模型自动"体检"仓库的轻量 Agent：给定一个 GitHub 仓库，它会克隆代码、检索与阅读文件，
 最终定位一个具体问题（bug / TODO / 过期接口），并给出带代码引用的结论。
 
-- 版本：**1.0.0**
+- 版本：**1.1.0**
 - 仓库：<https://github.com/NewDadada/RepoDoctor.git>
 
 ## 工作方式
@@ -13,7 +13,7 @@
 一个带工具调用（function calling）的循环：
 
 ```
-clone_repo → search_code / read_file → ... → final_answer
+clone_repo → list_files / search_code / read_file → ... → final_answer
 ```
 
 1. `orchestrator.run_agent` 把目标、已知事实和最近 5 步的观察拼成 messages；
@@ -25,9 +25,9 @@ clone_repo → search_code / read_file → ... → final_answer
 
 ```
 .
-├── pyproject.toml              # 项目元数据，版本 1.0.0
+├── pyproject.toml              # 项目元数据，版本 1.1.0
 ├── src/repo_doctor/
-│   ├── __init__.py             # __version__ = "1.0.0"
+│   ├── __init__.py             # __version__ = "1.1.0"
 │   ├── config.py               # pydantic-settings 读取 .env
 │   ├── llm.py                  # OpenAI 兼容客户端
 │   ├── orchestrator.py         # 核心 agent 循环
@@ -35,7 +35,7 @@ clone_repo → search_code / read_file → ... → final_answer
 │   ├── state.py                # TaskState / Step 数据类
 │   ├── trace.py                # 可选的 Langfuse 上报
 │   ├── prompts/system.md       # 系统提示词
-│   ├── tools/                  # clone_repo / read_file / search_code
+│   ├── tools/                  # clone_repo / list_files / read_file / search_code
 │   └── web/                    # 本地 Web UI
 │       ├── server.py           # http.server + SSE（零额外依赖）
 │       └── static/             # 单页界面（HTML / CSS / JS）
@@ -52,6 +52,7 @@ clone_repo → search_code / read_file → ... → final_answer
 │   └── test_version.py         # 版本 / 许可证元数据
 ├── docs/                       # Web UI 预览图
 ├── .github/workflows/ci.yml    # CI：Python 3.10 ~ 3.13
+├── CHANGELOG.md                # 版本变更记录
 ├── LICENSE                     # MIT
 └── eval_results/               # 评测结果（本地生成，不入库）
 ```
@@ -159,6 +160,7 @@ python scripts/eval.py --verbose
 | 工具 | 作用 |
 | --- | --- |
 | `clone_repo` | 浅克隆仓库到 workspace，命中缓存时不重复拉取 |
+| `list_files` | 按层数列出目录（默认 2 层），自动忽略 `.git`、`__pycache__`、虚拟环境等，最多 300 条 |
 | `read_file` | 按行切片读取文件（单次最多 500 行） |
 | `search_code` | 正则搜索，返回 `file:line`，最多 50 条命中 |
 
@@ -169,13 +171,14 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-测试全部离线运行，不需要 API Key：`test_tools.py` 在临时目录上验证 `read_file` / `search_code`，
+测试全部离线运行，不需要 API Key：`test_tools.py` 在临时目录上验证 `list_files` / `read_file` / `search_code`，
+`test_web.py` 起一个真实 HTTP 服务验证静态资源、路径穿越防护、SSE 事件与取消，
 `test_version.py` 校验包版本、`pyproject.toml` 与 LICENSE 是否一致。
 GitHub Actions 在每次 push / PR 时用 Python 3.10 ~ 3.13 各跑一遍（见 `.github/workflows/ci.yml`）。
 
 ## 版本
 
-当前发布版本为 **1.0.0**，对应 git tag `v1.0.0`。
+当前发布版本为 **1.1.0**，对应 git tag `v1.1.0`，变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 版本号在两处维护：`pyproject.toml` 的 `[project].version` 与
 `src/repo_doctor/__init__.py` 的 `__version__`。
 

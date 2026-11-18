@@ -20,7 +20,7 @@ def tools() -> dict:
 
 
 def test_registry_exposes_expected_tools(tools):
-    assert set(tools) == {"clone_repo", "read_file", "search_code"}
+    assert set(tools) == {"clone_repo", "list_files", "read_file", "search_code"}
 
 
 def test_tool_schemas_are_openai_compatible(tools):
@@ -82,6 +82,71 @@ def test_clone_args_require_repo_url():
 
     args = CloneArgs(repo_url="https://github.com/psf/requests.git", ref="main")
     assert args.repo_url.endswith(".git")
+
+
+def test_clone_args_make_ref_optional():
+    args = CloneArgs(repo_url="https://github.com/psf/requests")
+
+    assert args.ref == ""
+
+
+def _make_tree(root: Path) -> None:
+    (root / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (root / "notes.md").write_text("# notes\n", encoding="utf-8")
+    (root / ".git").mkdir()
+    (root / ".git" / "config").write_text("[core]\n", encoding="utf-8")
+    (root / "__pycache__").mkdir()
+    (root / "__pycache__" / "stale.pyc").write_bytes(b"0")
+    sub = root / "sub"
+    sub.mkdir()
+    (sub / "b.py").write_text("print(2)\n", encoding="utf-8")
+    deep = sub / "deep"
+    deep.mkdir()
+    (deep / "c.py").write_text("print(3)\n", encoding="utf-8")
+
+
+def test_list_files_respects_depth_and_ignores_noise(tools, tmp_path):
+    _make_tree(tmp_path)
+
+    result = tools["list_files"].run(str(tmp_path), max_depth=2)
+
+    assert result.ok
+    entries = result.data["entries"]
+    assert {"a.py", "notes.md", "sub/", "sub/b.py", "sub/deep/"} <= set(entries)
+    assert "sub/deep/c.py" not in entries
+    assert not any(entry.startswith((".git", "__pycache__")) for entry in entries)
+    assert result.data["count"] == len(entries)
+    assert result.data["truncated"] is False
+
+
+def test_list_files_filters_files_by_pattern(tools, tmp_path):
+    _make_tree(tmp_path)
+
+    result = tools["list_files"].run(str(tmp_path), max_depth=3, pattern="*.py")
+
+    files = [entry for entry in result.data["entries"] if not entry.endswith("/")]
+    assert files == ["a.py", "sub/b.py", "sub/deep/c.py"]
+    assert "sub/" in result.data["entries"]  # directories are still reported
+
+
+def test_list_files_truncates_large_directories(tools, tmp_path):
+    for i in range(5):
+        (tmp_path / f"f{i}.txt").write_text("x", encoding="utf-8")
+    tool = tools["list_files"]
+    tool.max_entries = 3
+
+    result = tool.run(str(tmp_path))
+
+    assert result.ok
+    assert result.data["count"] == 3
+    assert result.data["truncated"] is True
+
+
+def test_list_files_missing_directory_suggests_cloning(tools, tmp_path):
+    result = tools["list_files"].run(str(tmp_path / "missing"))
+
+    assert not result.ok
+    assert result.hint
 
 
 def test_clone_repo_creates_missing_workspace_parent(monkeypatch, tmp_path):

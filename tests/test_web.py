@@ -115,6 +115,30 @@ def test_serialize_step_trims_file_content():
     assert payload["data"]["truncated"] is True
 
 
+def test_serialize_step_keeps_list_files_compact():
+    step = Step(
+        thought="list the repo layout",
+        tool="list_files",
+        args={"path": "workspace/requests", "max_depth": 2},
+        result={
+            "ok": True,
+            "data": {
+                "path": "workspace/requests",
+                "entries": [f"module_{i}.py" for i in range(250)],
+                "count": 250,
+                "truncated": True,
+            },
+        },
+    )
+
+    payload = web.serialize_step(1, step)
+
+    assert payload["tool"] == "list_files"
+    assert payload["data"]["count"] == 250
+    assert len(payload["data"]["entries"]) == 200
+    assert payload["data"]["truncated"] is True
+
+
 def test_orchestrator_stops_before_calling_the_model(monkeypatch):
     monkeypatch.setattr(orchestrator.settings, "max_steps", 3)
     calls = []

@@ -1,4 +1,5 @@
 import subprocess, os, re, shutil
+from fnmatch import fnmatch
 from pathlib import Path
 from pydantic import BaseModel, Field
 from .base import Tool, ToolResult
@@ -6,7 +7,7 @@ from .base import Tool, ToolResult
 
 class CloneArgs(BaseModel):
     repo_url: str = Field(..., description="Github rep URL")
-    ref: str = Field(..., description="branch or commit")
+    ref: str = Field("", description="branch or tag; leave empty for the default branch")
 
 class CloneRepoTool(Tool):
     name = "clone_repo"
@@ -93,3 +94,72 @@ class SearchCodeTool(Tool):
             if len(hits) >= 50:
                 break
         return ToolResult(ok=True, data={"count": len(hits), "hits": hits})
+
+
+class ListFilesArgs(BaseModel):
+    path: str = Field(..., description="directory to list, usually the path returned by clone_repo")
+    max_depth: int = Field(2, ge=1, le=5, description="how many directory levels to descend")
+    pattern: str = Field("", description="optional filename glob, e.g. '*.py'")
+
+
+class ListFilesTool(Tool):
+    name = "list_files"
+    description = "List files and folders under a directory (relative paths). Use it to understand a repo layout."
+    args_schema = ListFilesArgs
+
+    #: hard cap so a huge checkout cannot flood the model context
+    max_entries = 300
+
+    IGNORED = {
+        ".git", ".hg", ".svn", "__pycache__", ".mypy_cache", ".pytest_cache",
+        ".ruff_cache", ".venv", "venv", "env", "node_modules", "build", "dist",
+        ".idea", ".vscode", ".next", "target",
+    }
+
+    def run(self, path: str, max_depth: int = 2, pattern: str = "") -> ToolResult:
+        root = Path(path)
+        if not root.exists():
+            return ToolResult(
+                ok=False,
+                error=f"there is no directory at {path}",
+                hint="call clone_repo first",
+            )
+        if not root.is_dir():
+            return ToolResult(ok=False, error=f"{path} is a file, use read_file instead")
+
+        entries: list[str] = []
+        truncated = False
+        # breadth-first so shallow entries are reported first
+        queue: list[tuple[Path, int]] = [(root, 0)]
+
+        while queue:
+            current, depth = queue.pop(0)
+            try:
+                children = sorted(current.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+            except OSError:
+                continue
+            for child in children:
+                if child.name in self.IGNORED:
+                    continue
+                rel = child.relative_to(root).as_posix()
+                if child.is_dir():
+                    entries.append(rel + "/")
+                    if depth + 1 < max_depth:
+                        queue.append((child, depth + 1))
+                elif not pattern or fnmatch(child.name, pattern):
+                    entries.append(rel)
+                if len(entries) >= self.max_entries:
+                    truncated = True
+                    break
+            if truncated:
+                break
+
+        return ToolResult(
+            ok=True,
+            data={
+                "path": str(root),
+                "entries": entries,
+                "count": len(entries),
+                "truncated": truncated,
+            },
+        )
