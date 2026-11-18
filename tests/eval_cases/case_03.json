@@ -1,0 +1,10 @@
+{
+    "id": "case_03",
+    "repo_url": "https://github.com/psf/requests",
+    "goal": "Find where HTTPError is raised in requests and quote the line",
+    "success_criteria": {
+        "final_answer_contains": ["HTTPError"],
+        "min_steps": 2,
+        "max_steps": 20
+    }
+}

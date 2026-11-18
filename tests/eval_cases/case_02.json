@@ -1,0 +1,10 @@
+{
+    "id": "case_02",
+    "repo_url": "https://github.com/pallets/flask",
+    "goal": "Find a function in flask/ that has a docstring marked as deprecated, quote it",
+    "success_criteria": {
+        "final_answer_contains": ["deprecat"],
+        "min_steps": 2,
+        "max_steps": 15
+    }
+}
